@@ -1,13 +1,12 @@
 CC = gcc
 CPP = g++
 AR = ar
-TARGET = rtsp
+TARGET = rtsp.out
 
 SOURCES = $(wildcard *.cpp)  $(wildcard *.c)
 OBJS = $(patsubst %.cpp,%.o, $(SOURCES)) $(patsubst %.c,%.o, $(SOURCES))
 
 INCLUDE = 	-I./
-#CFLAGS = -Wall -Os
 CFLAGS = -Wall -g
 CFLAGS += $(INCLUDE)
 

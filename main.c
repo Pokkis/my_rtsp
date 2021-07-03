@@ -1,11 +1,14 @@
-#include <stdio.h>
-#include "count.h"
+#include <unistd.h>
+#include <fcntl.h>
+#include "rtsptask.h"
+
 
 int main()
 {
-    printf("hello vscode\n");
-    int a = 4;
-    int b =5;
-    my_count(a,b);
-    return 0;
+	startRtspServer(554, 0, 0, 1400, 2);
+	while (1)
+	{
+		sleep(1);
+	}
+	return 0;
 }
