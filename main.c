@@ -5,7 +5,7 @@
 
 int main()
 {
-	startRtspServer(554, 0, 0, 1400, 2);
+	startRtspServer(554, 0, 1, 1400, 2);
 	while (1)
 	{
 		sleep(1);

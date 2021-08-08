@@ -21,10 +21,7 @@ int gstminvideocodeiflame(char *pminsps, char *pminpps, char *pminsei, char *pmi
 								   int spslen, int ppslen, int seilen, int vpslen);
 int gstmainvideocodeiflame(char *pmainsps, char *pmainpps, char *pmainsei, char *pmainvps,
 								   int spslen, int ppslen, int seilen, int vpslen);
-#if  IPC_THIRD_STREAM
-int gstthirdvideocodeiflame(char *pmainsps, char *pmainpps, char *pmainsei, char *pmainvps,
-								   int spslen, int ppslen, int seilen, int vpslen);
-#endif
+
 int setAvInfor(int nCh, int bMain, int bAudioOpen, char *audioCodec, int aduioSampleRate, int audioPt,char *videoCodec,int videoPt);
 int startRtspServer(int rtspPort, int bUserAuth, int bPassive, int mtu, int maxChn);
 int startRtspServer6(int rtspPort, int bUserAuth, int bPassive, int mtu, int maxChn);

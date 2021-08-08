@@ -425,34 +425,7 @@ _restartgetspspps:
 			}
 		}
 	}
-#if IPC_THIRD_STREAM
-	else if(clientSession->bUseMinStream == 2)
-	{
-		if(gstvideocodeiflame.gThirdSPSlen > 4)
-		{
-			spslen = gstvideocodeiflame.gThirdSPSlen -4;
-			memcpy(sps, &gstvideocodeiflame.gThirdSPSbuf[4], spslen);
-		}
-		if(gstvideocodeiflame.gThirdPPSlen > 4)
-		{
-			ppslen = gstvideocodeiflame.gThirdPPSlen -4;
-			memcpy(pps, &gstvideocodeiflame.gThirdPPSbuf[4], ppslen);
-		}
-		if(codectype == 5)
-		{
-			if(gstvideocodeiflame.gThirdSEIlen > 4)
-			{
-				seilen = gstvideocodeiflame.gThirdSEIlen -4;
-				memcpy(sei, &gstvideocodeiflame.gThirdSEIbuf[4], seilen);
-			}
-			if(gstvideocodeiflame.gThirdVPSlen > 4)
-			{
-				vpslen = gstvideocodeiflame.gThirdVPSlen -4;
-				memcpy(vps, &gstvideocodeiflame.gThirdVPSbuf[4], vpslen);
-			}
-		}
-	}
-#endif
+
 	if(spslen == 0 || ppslen == 0)
 	{
 		if (count > 1000)
@@ -661,7 +634,7 @@ RtspServer *CreatRtspServer(int rtspPort, int bUserAuth)
 	RtspServer 	*pServerHand = (RtspServer *)malloc(sizeof(RtspServer));
 	if(pServerHand == NULL)
 	{
-		//SS_SYSLOG(LOG_EMERG, (char *)"malloc error line:%d\n",__LINE__);
+		ERR("malloc error line:%d\n", __LINE__);
 		return NULL;
 	}
 
@@ -3660,9 +3633,9 @@ static void SendVideoData(int streamType,DWORD timpstamp,int mode)
 			{
 				continue;
 			}
-			//WARNING_TRACE("pSession->bUseMinStream=%d,pSession->bPlaySuccess=%d\n",pSession->bUseMinStream,pSession->bPlaySuccess);
-			//CYAN_TRACE("g_Env.rtspSever->clientNum=%d,pSession=%p\n",g_Env.rtspSever->clientNum,pSession);
-			//MAGENTA_TRACE("pSession=%p,firstframeflag=%d\n",pSession,pSession->firstframeflag);
+			WARNING_TRACE("pSession->bUseMinStream=%d,pSession->bPlaySuccess=%d\n",pSession->bUseMinStream,pSession->bPlaySuccess);
+			CYAN_TRACE("g_Env.rtspSever->clientNum=%d,pSession=%p\n",g_Env.rtspSever->clientNum,pSession);
+			MAGENTA_TRACE("pSession=%p,firstframeflag=%d\n",pSession,pSession->firstframeflag);
 			if(0 == pSession->firstframeflag)
 			{
 				if(g_Env.rtspSever->frametype != FRAME_TYPE_I)
@@ -3765,48 +3738,6 @@ static void Register_Signal(void)
 	}
 }
 
-static void Delete_Node_InList(G_RtpOverHttp_P Node)
-{
-	G_RtpOverHttp_P TmpNode_P = RtpOverHttp_Head.next;
-
-	if (Node == NULL)
-		return ;
-
-	while (TmpNode_P != &RtpOverHttp_Head) {
-		if (TmpNode_P->get_port == Node->get_port &&
-		    TmpNode_P->post_port == Node->post_port &&
-		    !strcmp(TmpNode_P->sessionCookie, Node->sessionCookie) &&
-		    !strcmp(TmpNode_P->ip, Node->ip))
-			break;
-		TmpNode_P = TmpNode_P->next;
-	}
-
-	if (TmpNode_P == &RtpOverHttp_Head)
-			return ;
-	TmpNode_P->next->prev = TmpNode_P->prev;
-	TmpNode_P->prev->next = TmpNode_P->next;
-	TmpNode_P->next = NULL;
-	TmpNode_P->prev = NULL;
-	if (TmpNode_P->clientsession->bUseMinStream) {
-		if (--Com_Env.min_use_count[TmpNode_P->clientsession->nSrcChannel] == 0 && Com_Env.Is_Enable_Min[TmpNode_P->clientsession->nSrcChannel] == 1) {
-			SS_PUB_DisEnableMinStream(TmpNode_P->clientsession->nSrcChannel);
-			Com_Env.Is_Enable_Min[TmpNode_P->clientsession->nSrcChannel] = 0;
-		}
-	}
-	if(TmpNode_P->clientsession)
-	{
-		//ERR("Node=%p,TmpNode_P->clientsession=%p,TmpNode_P->clientsession->HttpFlag=%d\n",Node,TmpNode_P->clientsession,TmpNode_P->clientsession->HttpFlag);
-		memset(TmpNode_P->clientsession, 0, sizeof(ClientSession));
-		TmpNode_P->clientsession = NULL;
-	}
-	if(TmpNode_P)
-	{
-		//ERR("TmpNode_P=%p\n",TmpNode_P);
-		free(TmpNode_P);
-		TmpNode_P  = NULL;
-	}
-}
-
 static void Delete_HttpSession_Handle(int line, void *PNode)
 {
 	/*fprintf(stdout, "\nip %s port %d and port %d Rtp/Rtsp/Http disconnect......\n"
@@ -3827,8 +3758,7 @@ static void Delete_HttpSession_Handle(int line, void *PNode)
 	g_Env.rtspSever->clientNum--;
 	if(g_Env.rtspSever->clientNum<0)
 		g_Env.rtspSever->clientNum = 0;
-	Delete_Node_InList(pNode);
-	//pthread_exit(NULL);
+
 }
 
 static void *doEventLoop(void* arg)
@@ -3928,22 +3858,7 @@ static void *doEventLoop(void* arg)
 				pStream->bFirst = 0;
 			}
 		}
-	#if IPC_THIRD_STREAM
-		if(GetVideoSessionCount(2,RTP_TCP)+GetVideoSessionCount(2,RTP_UDP) > 0
-			&&Get_Video_Frame(2,&timpstamp) > 0)
-		{
-			MediaType = g_Env.rtspSever->bMediaType;
-			pStream = &g_Env.rtspSever->bVideoStream[2];
-			if(GetVideoSessionCount(2,RTP_TCP) > 0)
-				SendVideoData(2,timpstamp,RTP_TCP);
-			if(GetVideoSessionCount(2,RTP_UDP) > 0)
-				SendVideoData(2,timpstamp,RTP_UDP);
-			if(pStream->bFirst&&MediaType)
-			{
-				pStream->bFirst = 0;
-			}
-		}
-	#endif
+
 		if(GetAudioSessionCount() > 0 && Get_Audio_Frame(&timpstamp) > 0)
 		{
 			MediaType = g_Env.rtspSever->bMediaType;
@@ -4035,27 +3950,6 @@ int gstminvideocodeiflame(char *pminsps, char *pminpps, char *pminsei, char *pmi
 	return 0;
 }
 
-#if IPC_THIRD_STREAM
-int gstthirdvideocodeiflame(char *pminsps, char *pminpps, char *pminsei, char *pminvps,
-								   int spslen, int ppslen, int seilen, int vpslen)
-{
-	memset(gstvideocodeiflame.gThirdSPSbuf, 0, 128);
-	memset(gstvideocodeiflame.gThirdPPSbuf, 0, 128);
-	memcpy(gstvideocodeiflame.gThirdSPSbuf, pminsps, 128);
-	memcpy(gstvideocodeiflame.gThirdPPSbuf, pminpps, 128);
-	gstvideocodeiflame.gThirdSPSlen = spslen;
-	gstvideocodeiflame.gThirdPPSlen = ppslen;
-	memset(gstvideocodeiflame.gThirdSEIbuf, 0, 128);
-	memset(gstvideocodeiflame.gThirdVPSbuf, 0, 128);
-	memcpy(gstvideocodeiflame.gThirdSEIbuf, pminsei, 128);
-	memcpy(gstvideocodeiflame.gThirdVPSbuf, pminvps, 128);
-	gstvideocodeiflame.gThirdSEIlen = seilen;
-	gstvideocodeiflame.gThirdVPSlen = vpslen;
-
-	return 0;
-}
-#endif
-
 int	setAvInfor(int nCh, int bMain, int bAudioOpen, char *audioCodec, int aduioSampleRate,
 		int audioPt,char *videoCodec,int videoPt)
 {
@@ -4068,13 +3962,9 @@ int	setAvInfor(int nCh, int bMain, int bAudioOpen, char *audioCodec, int aduioSa
 	if(AvAttr == NULL)
 		return -1;
 
-#if IPC_THIRD_STREAM
-	if(audioCodec == NULL || videoCodec == NULL || nCh >= g_Env.maxChn || nCh < 0 ||
-			bMain > 2 || bMain < 0)
-#else
+
 	if(audioCodec == NULL || videoCodec == NULL || nCh >= g_Env.maxChn || nCh < 0 ||
 			bMain > 1 || bMain < 0)
-#endif
 	{
 		return -1;
 	}
@@ -4205,14 +4095,11 @@ int startRtspServer6(int rtspPort, int bUserAuth, int bPassive, int mtu, int max
 	g_Env.rtspServerThread = 0;
 	if (g_Env.AvAttr == NULL && Com_Env.Is_Init_Rtspattr == 0)
 	{
-	#if IPC_THIRD_STREAM_ENABLE
-		g_Env.AvAttr = (Rtsp_av_attr *)malloc(3 * maxChn * sizeof(Rtsp_av_attr));
-	#else
+
 		g_Env.AvAttr = (Rtsp_av_attr *)malloc(2 * maxChn * sizeof(Rtsp_av_attr));
-	#endif
 		if(g_Env.AvAttr == NULL)
 		{
-			//SS_SYSLOG(LOG_EMERG, (char *)"mallo error line:%d\n",__LINE__);
+			ERR("mallo error line:%d\n", __LINE__);
 			return -1;
 		}
 	}

@@ -44,12 +44,10 @@ typedef unsigned int DWORD;
 #define RTP_VERSION		2		
 #define H264_TIME_FREQUENCY     90
 
-#if defined(HI3518E_ARCH) || defined(HI3518EV200_ARCH)|| defined(HI3516EV200_ARCH)
-#define MAX_CLIENT_NUM 4
-#else
 #define MAX_CLIENT_NUM 8
-#endif
+
 #define headerSize 100
+
 typedef void UrlAnalysis(char* url,int *nCh, int *bMain);
 typedef enum _StreamMode
 {
