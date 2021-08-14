@@ -21,6 +21,9 @@
 #include "rtsptask.h"
 #include "md5.h"
 #include "commonsocket.h"
+#include "h264read.h"
+
+#define headerSize sizeof(fram_info_t)
 
 RtspEnv g_Env;
 Rtsp_TcpUdp_Http_Comm Com_Env;
@@ -37,7 +40,7 @@ int	gRtspFamily = 0;
 #define MAX_MTU_COUNT 15
 
 #define RTP_HDR_SZ 12
-#define FRAME_TYPE_I 11
+//#define FRAME_TYPE_I 11
 struct jpeghdr {
 	int 	tspec:8;
 	int 	off:24;
@@ -204,26 +207,27 @@ static int Get_Video_Frame(int streamType,DWORD *timpstamp)
 		pStream->lastFrameNo = 0;
 	}
 
-	//ret = Intf_GetVideoFrame(0, streamType,g_Env.rtspSever->pTCPVideoBuf, g_Env.rtspSever->maxVideoLen,pStream->bFirst,
-	//	1,pStream->lastFrameNo,&getFrameNo, 1000, lastTimeStamp,&curTimeStamp, &pStream->lastPos);
-
-	if(ret > 0)
+	fram_info_t fram_info = { 0 };
+	ret = h264_read_fram(&fram_info);
+	if(ret == 0 && pStream->bFirst)
 	{
-		if(pStream->lastFrameNo > getFrameNo)
-			pStream->lastFrameNo = 0;
-		else
-			pStream->lastFrameNo = getFrameNo + 1;
-		*timpstamp = 0;
-		//((EXT_FRAME_HEAD*)(g_Env.rtspSever->pTCPVideoBuf+sizeof(ENC_FRAME_HEAD)))->nTimestamp;
+		if(fram_info.fram_type != FRAME_TYPE_I)
+		{
+			free(fram_info.fram_buff);
+			ret = -1;
+		}
+	}
+	if(ret == 0)
+	{
+
+		pStream->lastFrameNo++;	
+		*timpstamp = fram_info.timestamp;
 		g_Env.rtspSever->bMediaType = 1;
 		g_Env.rtspSever->streamType = streamType;
-
-		int frametype = 0;
-		int fVideoFrameSize = 0;
-		//pf_get_frame_info(g_Env.rtspSever->pTCPVideoBuf, &frametype, &fVideoFrameSize, NULL);
-		g_Env.rtspSever->frametype = frametype;
-
-		memcpy(g_Env.rtspSever->pUDPVideoBuf,g_Env.rtspSever->pTCPVideoBuf,ret);
+		g_Env.rtspSever->frametype = fram_info.fram_type;
+		memcpy(g_Env.rtspSever->pTCPVideoBuf,(char*)&fram_info, headerSize);
+		memcpy(g_Env.rtspSever->pTCPVideoBuf+headerSize,fram_info.fram_buff,fram_info.fram_size);
+		memcpy(g_Env.rtspSever->pUDPVideoBuf,g_Env.rtspSever->pTCPVideoBuf,fram_info.fram_size+headerSize);
 	}
 	else
 	{
@@ -3281,13 +3285,13 @@ static int  handle_rtp_send(ClientSession *clientSession,int framLen, DWORD time
 
 	if (bVideo == 1)
 	{
-		if(timestamp == clientSession->lastPts[0])
-			rtpPts  = clientSession->rtptime[0];
-		else
-			rtpPts  = clientSession->rtptime[0] + H264_TIME_FREQUENCY*(timestamp-clientSession->lastPts[0]);
-		clientSession->lastPts[0] = timestamp;
-		clientSession->rtptime[0] = rtpPts;
-		rtpPts = htonl(rtpPts);
+		//if(timestamp == clientSession->lastPts[0])
+			//rtpPts  = clientSession->rtptime[0];
+		//else
+			//rtpPts  = clientSession->rtptime[0] + H264_TIME_FREQUENCY*(timestamp-clientSession->lastPts[0]);
+		//clientSession->lastPts[0] = timestamp;
+		clientSession->rtptime[0] += timestamp;
+		rtpPts = htonl(timestamp);
 
 		if(strcmp(AvAttr->videoCodec,"H265")==0)
 		{
@@ -3297,7 +3301,7 @@ static int  handle_rtp_send(ClientSession *clientSession,int framLen, DWORD time
 				nalLen = FindStartCode(&framBuf[curPos], framLen - curPos);
 				if(nalLen < 0)
 				{
-					if(nal_send_h265_video(clientSession, &framBuf[curPos]-headerSize, framLen - curPos, 1, rtpPts,nal_unit_type,mode) < 0)
+					if(nal_send_h265_video(clientSession, &framBuf[curPos]-headerSize, framLen - curPos, 1, rtpPts, nal_unit_type,mode) < 0)
 						return 0;
 					break;
 				}
@@ -4070,6 +4074,7 @@ int startRtspServer(int rtspPort, int bUserAuth, int bPassive, int mtu, int maxC
 		ERR("pthread detached g_Env.rtspServerThread failed\n");
 		return -1;
 	}
+
 	SetRtspServerState(1);
 	return 1;
 }

@@ -46,8 +46,6 @@ typedef unsigned int DWORD;
 
 #define MAX_CLIENT_NUM 8
 
-#define headerSize 100
-
 typedef void UrlAnalysis(char* url,int *nCh, int *bMain);
 typedef enum _StreamMode
 {
