@@ -83,6 +83,7 @@ int comm_isocket_creat(int af,INTF_SOCKTP socktype, int port)
 	int		fd, i_val, ret,st;
 	struct sockaddr_in addr;
 	struct sockaddr_in6 addr6;
+	BLUE_TRACE("cdy\n");
 
 	if(socktype == INTF_TCP)
 	{
@@ -96,6 +97,7 @@ int comm_isocket_creat(int af,INTF_SOCKTP socktype, int port)
 	{
 		return -1;
 	}
+	BLUE_TRACE("cdy\n");
 	//fd = socket(AF_INET, st, 0);
 	fd = socket(af, st, 0);
 	if ( fd < 0)
@@ -103,6 +105,7 @@ int comm_isocket_creat(int af,INTF_SOCKTP socktype, int port)
 		ERR("creat socket");
 		return -1;
 	}
+	BLUE_TRACE("cdy\n");
 
 	ret = comm_socket_nonblock( fd, 1);
 	if (ret < 0)
@@ -111,6 +114,7 @@ int comm_isocket_creat(int af,INTF_SOCKTP socktype, int port)
 		ERR("set socket noblocke");
 		return -1;
 	}
+	BLUE_TRACE("cdy\n");
 
 	i_val = 1;
 	ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (void *)&i_val,
@@ -121,7 +125,7 @@ int comm_isocket_creat(int af,INTF_SOCKTP socktype, int port)
 		ERR("set socket reuseadd");
 		return -1;
 	}
-		
+	BLUE_TRACE("cdy\n");	
 	if (af == AF_INET6)
 	{
 		ret = comm_make_sockAddr6((struct sockaddr_in6*)&addr6, NULL, port);
@@ -135,6 +139,7 @@ int comm_isocket_creat(int af,INTF_SOCKTP socktype, int port)
 		close(fd);
 		return -1;
 	}
+	BLUE_TRACE("cdy\n");
 
 	if (af == AF_INET6)
 	{
@@ -143,12 +148,16 @@ int comm_isocket_creat(int af,INTF_SOCKTP socktype, int port)
 	else
 	{
 		ret = bind(fd, (struct sockaddr *)&addr, sizeof(struct sockaddr_in));
+		BLUE_TRACE("cdy ret:%d\n", ret);
 	}
+	BLUE_TRACE("cdy ret:%d\n", ret);
 	if (ret != 0)		
 	{
+		perror("bind"); 
 		close(fd);
 		return -1;
 	}
+	BLUE_TRACE("cdy\n");
 
 	return fd;
 }

@@ -80,7 +80,7 @@ typedef struct _client_session
 	int			  		nSrcChannel;
 	DWORD				lastPts[2];
 	struct timeval		rtcpKeepAliveTime;
-	StreamMode 			streamingMode;
+	int 				streamingMode;
 	int					mediaNum;
 	int					trackId[2];
 	char 				destinationAddressStr[64];

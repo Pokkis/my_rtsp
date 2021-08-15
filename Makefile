@@ -14,7 +14,7 @@ CFLAGS += $(INCLUDE)
 all : $(TARGET)
 
 $(TARGET) : $(SOURCES) 
-	$(CC)  $(CFLAGS) $^ -o $(TARGET) $(LD_FLAGS) 
+	$(CPP)  $(CFLAGS) $^ -o $(TARGET) $(LD_FLAGS) 
 
 	
 .PHONY = clean

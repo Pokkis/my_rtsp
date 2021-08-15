@@ -93,22 +93,18 @@ int DeDataQueue(sequeue_data_t *queue, char *outData, int oneDataSize)
         pthread_mutex_unlock(&queue->DeQueueLock);
         return -1;
     }
-
     if (1 == EmptyDataSequeue(queue))
     {
         pthread_mutex_unlock(&queue->DeQueueLock);
         return -1; /* empty */
     }
-
     unsigned int position = queue->front % queue->maxQueueSize;
     if (NULL != outData)
     {
         memcpy(outData, queue->data +  position * oneDataSize, oneDataSize);
     }
     queue->front++;
-
     pthread_mutex_unlock(&queue->DeQueueLock);
-
     return 0;
 }
 

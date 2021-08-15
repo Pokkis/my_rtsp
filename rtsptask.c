@@ -194,10 +194,12 @@ static int CountMultiSessionsUse(int bMinChn);
 static void CheckMultiMemberKeepAlive(const int bUseMin,const struct timeval timeNow);
 static int get_status_by_tcp_port(int report, int *txsize);
 
+static char g_test_buff[512*1025];
 
 static int Get_Video_Frame(int streamType,DWORD *timpstamp)
 {
-	int ret = 0;
+	static int iFlag = 0;
+	int ret = -1;
 	DWORD lastTimeStamp = 0;
 	DWORD  getFrameNo  = 0;
 	DWORD curTimeStamp = 0;
@@ -209,17 +211,23 @@ static int Get_Video_Frame(int streamType,DWORD *timpstamp)
 
 	fram_info_t fram_info = { 0 };
 	ret = h264_read_fram(&fram_info);
-	if(ret == 0 && pStream->bFirst)
+	#if 1
+	if(ret == 0 && iFlag == 0)
 	{
 		if(fram_info.fram_type != FRAME_TYPE_I)
-		{
+		{		
 			free(fram_info.fram_buff);
 			ret = -1;
 		}
+		else
+		{
+			iFlag = 1;
+		}
 	}
+	#endif
+	//BLUE_TRACE("cdy fram_info.fram_type:%d ret:%d\n", fram_info.fram_type, ret);
 	if(ret == 0)
 	{
-
 		pStream->lastFrameNo++;	
 		*timpstamp = fram_info.timestamp;
 		g_Env.rtspSever->bMediaType = 1;
@@ -228,6 +236,8 @@ static int Get_Video_Frame(int streamType,DWORD *timpstamp)
 		memcpy(g_Env.rtspSever->pTCPVideoBuf,(char*)&fram_info, headerSize);
 		memcpy(g_Env.rtspSever->pTCPVideoBuf+headerSize,fram_info.fram_buff,fram_info.fram_size);
 		memcpy(g_Env.rtspSever->pUDPVideoBuf,g_Env.rtspSever->pTCPVideoBuf,fram_info.fram_size+headerSize);
+		memcpy(g_test_buff, g_Env.rtspSever->pTCPVideoBuf, fram_info.fram_size+headerSize);
+		
 	}
 	else
 	{
@@ -1586,6 +1596,7 @@ static void handleCmd_DESCRIBE(ClientSession *clientSession,  char const* cseq,c
 	clientSession->nSrcChannel = chn;
 	clientSession->bUseMinStream = min;		
 	AvAttr = g_Env.AvAttr + clientSession->nSrcChannel * 2 + clientSession->bUseMinStream;
+	sprintf(AvAttr->videoCodec,"H264");
 
 	if(strcmp(AvAttr->videoCodec,"H264") == 0)
 	{
@@ -2034,7 +2045,7 @@ static void handleCmd_SETUP(ClientSession *clientSession,  char const* cseq,char
 								{
 
 									DBG("rtsp str %s \n",clientSession->sendBuf);
-									//��̬Ӱ��˿�
+									//��̬Ӱ��˿�?
 									BLUE_TRACE("rtsp ----serverRtcpPort = %d,serverRtpPort = %d\n",serverRtcpPort,serverRtpPort);
 
 									SS_PARAM_GET_NETAPP_UPNP_CONFIG(&stUpnpConfig);
@@ -3267,7 +3278,7 @@ static int  handle_rtp_send(ClientSession *clientSession,int framLen, DWORD time
 	int nal_unit_type = 0;
 	char audioBuf[1024] = {0};
 	int	audioLen = 0;
-
+	
 	Rtsp_av_attr *AvAttr = NULL;
 	AvAttr = g_Env.AvAttr + clientSession->nSrcChannel * 2 + clientSession->bUseMinStream;
 
@@ -3327,6 +3338,18 @@ static int  handle_rtp_send(ClientSession *clientSession,int framLen, DWORD time
 		}
 		else if(strcmp(AvAttr->videoCodec,"H264")==0)
 		{
+			#if 1
+			int curPos = 0;
+			fram_info_t *p_fram_info = (fram_info_t *)g_test_buff;
+			BLUE_TRACE("framnum:%d fram_size:%d fram_type:%d nal_unit_type:%d\n",p_fram_info->framnum, p_fram_info->fram_size,p_fram_info->fram_type, nal_unit_type);
+			
+			if(nal_send_video(clientSession, g_test_buff, p_fram_info->fram_size, 1, rtpPts, nal_unit_type, mode) < 0)
+			{
+				return 0;
+			}
+			
+			#else
+			
 			int curPos = 0;
 			while(curPos < framLen)
 			{
@@ -3360,6 +3383,7 @@ static int  handle_rtp_send(ClientSession *clientSession,int framLen, DWORD time
 
 				}
 			}
+			#endif
 		}
 		else if(strcmp(AvAttr->videoCodec,"JPEG")==0)
 		{
@@ -3625,6 +3649,7 @@ void WriteDateHandler(void * instance,int Mask,int mode)
 
 static void SendVideoData(int streamType,DWORD timpstamp,int mode)
 {
+	//BLUE_TRACE("cdy clientNum:%d",g_Env.rtspSever->clientNum);
 	RtspServer *prtspSer = g_Env.rtspSever;
 	ClientSession *pSession = NULL;
 	if(g_Env.rtspSever->clientNum > 0)
@@ -3637,9 +3662,9 @@ static void SendVideoData(int streamType,DWORD timpstamp,int mode)
 			{
 				continue;
 			}
-			WARNING_TRACE("pSession->bUseMinStream=%d,pSession->bPlaySuccess=%d\n",pSession->bUseMinStream,pSession->bPlaySuccess);
-			CYAN_TRACE("g_Env.rtspSever->clientNum=%d,pSession=%p\n",g_Env.rtspSever->clientNum,pSession);
-			MAGENTA_TRACE("pSession=%p,firstframeflag=%d\n",pSession,pSession->firstframeflag);
+			//WARNING_TRACE("pSession->bUseMinStream=%d,pSession->bPlaySuccess=%d\n",pSession->bUseMinStream,pSession->bPlaySuccess);
+			//CYAN_TRACE("g_Env.rtspSever->clientNum=%d,pSession=%p\n",g_Env.rtspSever->clientNum,pSession);
+			//MAGENTA_TRACE("pSession=%p,firstframeflag=%d\n",pSession,pSession->firstframeflag);
 			if(0 == pSession->firstframeflag)
 			{
 				if(g_Env.rtspSever->frametype != FRAME_TYPE_I)
@@ -3835,8 +3860,9 @@ static void *doEventLoop(void* arg)
 		int MediaType = 0;
 		RTSP_STREAM_PARAM *pStream = NULL;
 		if(GetVideoSessionCount(0,RTP_TCP)+GetVideoSessionCount(0,RTP_UDP) > 0 
-			&&Get_Video_Frame(0,&timpstamp) > 0)
+			&&Get_Video_Frame(0,&timpstamp) == 0)
 		{
+		   // BLUE_TRACE("cdy");
 			MediaType = g_Env.rtspSever->bMediaType;
 			pStream = &g_Env.rtspSever->bVideoStream[0];
 			if(GetVideoSessionCount(0,RTP_TCP) > 0)

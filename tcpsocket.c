@@ -156,11 +156,12 @@ int comm_tcp_listen(int af,const char *psz_host, int i_port)
 		printf("error port num %d\n", i_port);
 		return -1;
 	}
-	
+	BLUE_TRACE("cdy\n");
 
 	g_RtspSocket = comm_isocket_creat(af, INTF_TCP, i_port);
 	if (g_RtspSocket < 0)
 		return -1;
+	BLUE_TRACE("cdy\n");
 
 	if( listen( g_RtspSocket, 20 ) != 0 )
 	{
@@ -168,7 +169,7 @@ int comm_tcp_listen(int af,const char *psz_host, int i_port)
 		close( g_RtspSocket );
 		return -1;
 	}
-	
+	BLUE_TRACE("cdy\n");
 	return g_RtspSocket;
 }
 

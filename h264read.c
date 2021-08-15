@@ -135,7 +135,8 @@ int h264_read_fram(fram_info_t *p_fram)
         return -1;
     }
 
-    return DeDataQueue(g_h264_read.fram_queue, (char*)&p_fram, sizeof(fram_info_t));
+	int ret = DeDataQueue(g_h264_read.fram_queue, (char*)p_fram, sizeof(fram_info_t));
+    return ret;
 }
 
 static int GetSpsPpsSeiLen(int *spsLen, int *ppsLen, char *pspsstart, char *pppsstart,  int len, char *data)
@@ -194,7 +195,7 @@ static void *h264_read_thread(void *arg)
     int *run_flag = (int *)arg;
     int n = 0; //当前读取到的数据大小
     FILE *f_h264 = NULL;
-    int n_last = 0; //上一次读取的文件还有多少没有发送的
+    int n_last = 0; //上一次读取的文件还有多少没有发�?�的
     int total_len = 0;
     
     char buf[MAXBUF] = {};
@@ -218,7 +219,7 @@ static void *h264_read_thread(void *arg)
 
     while (*run_flag)
     {
-        //这里循环读取h264文件发送
+        //这里循环读取h264文件发�??
         f_h264 = fopen(SEND_FILE, "rb");
 		if(NULL == f_h264)
 		{
@@ -243,6 +244,7 @@ static void *h264_read_thread(void *arg)
                     //fprintf(stdout, "send type:%d size:%ld send_count:%d\n ", *(start_code+4)&0x1f, end_code - start_code, send_count);
                     timestamp += 90000/fram_rate;
                     fram_info.timestamp = timestamp;
+					fram_info.framnum = g_h264_read.fram_count;
                     fram_info.fram_type = (*(start_code+4)&0x1f) == 7? FRAME_TYPE_I: FRAME_TYPE_P;
                     fram_info.fram_size = end_code - start_code;
                     fram_info.fram_buff = (char *)malloc(fram_info.fram_size);
@@ -257,9 +259,9 @@ static void *h264_read_thread(void *arg)
 
                     if(fram_info.fram_type == FRAME_TYPE_I && getsps_flag == 0)
                     {
-                        //GetSpsPpsSeiLen(&SPSlen, &PPSlen, SPSbuf, PPSbuf, n - send_len, start_code);
+                        GetSpsPpsSeiLen(&SPSlen, &PPSlen, SPSbuf, PPSbuf, n - send_len, start_code);
                         getsps_flag = 1;
-                        //gstmainvideocodeiflame(SPSbuf, PPSbuf, SEIbuf, VPSbuf, SPSlen, PPSlen, SEIlen, VPSlen);
+                        gstmainvideocodeiflame(SPSbuf, PPSbuf, SEIbuf, VPSbuf, SPSlen, PPSlen, SEIlen, VPSlen);
                     }
 
 					usleep(1000 * 20);
@@ -278,6 +280,7 @@ static void *h264_read_thread(void *arg)
                         //fprintf(stdout, "send type:%d size:%d receive_count:%d\n ", *(start_code+4)&0x1f, n, send_count);
                         timestamp += 90000/fram_rate;
                         fram_info.timestamp = timestamp;
+						fram_info.framnum = g_h264_read.fram_count;
                         fram_info.fram_type = (*(start_code+4)&0x1f) == 7? FRAME_TYPE_I: FRAME_TYPE_P;
                         fram_info.fram_size = n - send_len;
                         fram_info.fram_buff = (char *)malloc(fram_info.fram_size);
@@ -296,7 +299,6 @@ static void *h264_read_thread(void *arg)
         usleep(1000);
         //break;
     }
-    return ;
 }
 
 
@@ -305,7 +307,7 @@ static void *h264_write_thread(void *arg)
     int *run_flag = (int *)arg;
     FILE *f_h264 = NULL;
 
-    //这里循环读取h264文件发送
+    //这里循环读取h264文件发�??
     f_h264 = fopen(WRITE_FILE, "wb+");
     if(NULL == f_h264)
     {
@@ -323,8 +325,11 @@ static void *h264_write_thread(void *arg)
 
         fwrite(fram_info.fram_buff, 1, fram_info.fram_size, f_h264);
         free(fram_info.fram_buff);
+		if( g_h264_read.fram_count > 500)
+		{
+			break;
+		}
     }
     SUCCESS_TRACE("quit success\n");
     fclose(f_h264);
-    return;
 }
