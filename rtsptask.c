@@ -1597,6 +1597,7 @@ static void handleCmd_DESCRIBE(ClientSession *clientSession,  char const* cseq,c
 	clientSession->bUseMinStream = min;		
 	AvAttr = g_Env.AvAttr + clientSession->nSrcChannel * 2 + clientSession->bUseMinStream;
 	sprintf(AvAttr->videoCodec,"H264");
+	AvAttr->videoPt = 96;
 
 	if(strcmp(AvAttr->videoCodec,"H264") == 0)
 	{
@@ -3341,6 +3342,7 @@ static int  handle_rtp_send(ClientSession *clientSession,int framLen, DWORD time
 			#if 1
 			int curPos = 0;
 			fram_info_t *p_fram_info = (fram_info_t *)g_test_buff;
+			nal_unit_type = (g_test_buff[headerSize+4]& 0x7e)>>1;
 			BLUE_TRACE("framnum:%d fram_size:%d fram_type:%d nal_unit_type:%d\n",p_fram_info->framnum, p_fram_info->fram_size,p_fram_info->fram_type, nal_unit_type);
 			
 			if(nal_send_video(clientSession, g_test_buff, p_fram_info->fram_size, 1, rtpPts, nal_unit_type, mode) < 0)
