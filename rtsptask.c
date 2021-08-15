@@ -237,7 +237,7 @@ static int Get_Video_Frame(int streamType,DWORD *timpstamp)
 		memcpy(g_Env.rtspSever->pTCPVideoBuf+headerSize,fram_info.fram_buff,fram_info.fram_size);
 		memcpy(g_Env.rtspSever->pUDPVideoBuf,g_Env.rtspSever->pTCPVideoBuf,fram_info.fram_size+headerSize);
 		memcpy(g_test_buff, g_Env.rtspSever->pTCPVideoBuf, fram_info.fram_size+headerSize);
-		
+		free(fram_info.fram_buff);
 	}
 	else
 	{
